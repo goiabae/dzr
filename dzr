@@ -1,6 +1,17 @@
 #!/bin/sh
 # shellcheck disable=SC2086,SC2155
 
+verbose=0
+
+while getopts "v" opt; do
+	case "$opt" in
+		v) verbose=1 ;;
+		*) ;;
+	esac
+done
+
+shift $((OPTIND-1))
+
 # CGI call handling, for example moving ./dzr* bin to ~/cgi-bin and running :
 #     python3 -m http.server --cgi
 # from your ~ (as non-root !) will reply to http://0.0.0.0:8000/cgi-bin/dzr?6113114,806027
@@ -64,7 +75,7 @@ for url in "$@"; do
 		*/0) url="$url$($DLG_TEXT ''|jq -rR '.|@uri')" ;; # escaped id
 		/track/*) echo $url | play; break ;;
 	esac
-	echo "$0 $url" >&2
+	[ "$verbose" -eq 1 ] && echo "$0 $url" >&2
 	while path=$($FUNC $url); do # browse REPL
 		case "$path" in
 		▸) echo "$API$url"; $FETCH "$API$url" | jq "$FMT_TRKS" | play cat; break ;;
