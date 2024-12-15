@@ -1,5 +1,4 @@
 #!/bin/sh
-# shellcheck disable=SC2086,SC2155
 
 export DZR_VERBOSE=0
 
@@ -20,9 +19,12 @@ unscramble(){ printf "%s" "${8}${16}${7}${15}${6}${14}${5}${13}${4}${12}${3}${11
 if [ -z "$DZR_CBC" ]; then
 	command -v "$(echo "$FETCH" | cut -f 1 -d " ")" >/dev/null || { echo "key extraction require $FETCH" 1>&2 ; exit 1 ;}
 	printf "Add the following to your shell profile e.g. ~/.profile or ~/.zshrc:\n" >&2
+	# shellcheck disable=SC2086
 	APP_WEB=$($FETCH -L deezer.com/en/channels/explore | sed -n 's/.*src="\([^"]*app-web[^"]*\).*/\1/p' | xargs $FETCH -L)
 	TMP_CBC=$(echo "$APP_WEB"  | tr ,_ '\n'  | sed -n 's/.*\(%5B0x..%2C.\{39\}%2C0x..%5D\).*/\1/p' | sed 's/%../\n/g' | xargs printf '\\%o ')
-	export DZR_CBC="$(unscramble $TMP_CBC)";
+	export DZR_CBC
+	# shellcheck disable=SC2086
+	DZR_CBC="$(unscramble $TMP_CBC)";
 	printf "%s" "    export DZR_CBC=$DZR_CBC" >&2
 	[ "-$*" = "-!" ] && printf '%s' "$DZR_CBC" && exit
 	sleep 2 # give time to read the warning
@@ -31,7 +33,7 @@ fi
 
 # dependencies check, see: https://github.com/yne/dzr/issues/12
 for c in jq curl dialog openssl $(echo "$PLAYER" | cut -f 1 -d " "); do
-	command -v $c >/dev/null || { echo "$c is required" 1>&2 ; UNMET_DEPENDENCIES=1;}
+	command -v "${c}" >/dev/null || { echo "$c is required" 1>&2 ; UNMET_DEPENDENCIES=1;}
 done
 [ -n "$UNMET_DEPENDENCIES" ] && exit 1;
 
@@ -49,25 +51,28 @@ dzr_user_0()   { $DLG_LIST charts '' albums '' playlists '' flow '' tracks '' ar
 dzr_artist_0() { $DLG_LIST top?limit=50 '' albums '' fans '' related '' radio '' playlists '' ;}
 
 dzr_default() {
-	$FETCH -H "Accept-Language: $LANG" "$API$1" | jq -f format_list.jq | xargs $DLG_LIST ▸ "play all /track/" ⇄ "shuf all /track/"
+	# shellcheck disable=SC2086
+	$FETCH -H "Accept-Language: $LANG" "$API$1" |\
+		jq -f format_list.jq |\
+		xargs $DLG_LIST ▸ "play all /track/" ⇄ "shuf all /track/"
 } # TODO: .next
 
 play() { # receive /track/1,2,3 from stdin
 	xargs basename | xargs dzr-url | ${1:-cat} | while read -r url id; do
-		$FETCH "$url" | dzr-dec $id | eval ${PLAYER:-'mpv -'} || break # stop if Ctrl+C : $? = 4
+		$FETCH "$url" | dzr-dec "${id}" | eval "${PLAYER:-'mpv -'}" || break # stop if Ctrl+C : $? = 4
 	done
 }
 
 for url in "$@"; do
 	FUNC=$(echo "dzr_$url" | sed "$FMT_FUNC") # path (/search/artist?q=x) to function (dzr_search_artist)
-	type $FUNC 1>/dev/null 2>/dev/null || FUNC=dzr_default
+	type "${FUNC}" 1>/dev/null 2>/dev/null || FUNC=dzr_default
 	case $url in # catch url that need user input (query, id)
 		*=)  url="$url$($DLG_TEXT ''|jq -rR '.|@uri')" ;; # escaped query
 		*/0) url="$url$($DLG_TEXT ''|jq -rR '.|@uri')" ;; # escaped id
-		/track/*) echo $url | play; break ;;
+		/track/*) echo "${url}" | play; break ;;
 	esac
 	[ "$DZR_VERBOSE" -eq 1 ] && echo "$0 $url" >&2
-	while path=$($FUNC $url); do # browse REPL
+	while path=$($FUNC "${url}"); do # browse REPL
 		case "$path" in
 		▸) echo "$API$url"; $FETCH "$API$url" | jq -f format_tracks.jq | play cat; break ;;
 		⇄) echo "$API$url"; $FETCH "$API$url" | jq -f format_tracks.jq | play shuf; break ;;
