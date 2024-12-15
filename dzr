@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-export DZR_VERBOSE=0
+export DZR_VERBOSE=${DZR_VERBOSE:-0}
 
 while getopts "v" opt; do
 	case "$opt" in
