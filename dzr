@@ -1,11 +1,11 @@
 #!/bin/sh
 # shellcheck disable=SC2086,SC2155
 
-verbose=0
+export DZR_VERBOSE=0
 
 while getopts "v" opt; do
 	case "$opt" in
-		v) verbose=1 ;;
+		v) DZR_VERBOSE=1 ;;
 		*) ;;
 	esac
 done
@@ -63,7 +63,7 @@ for url in "$@"; do
 		*/0) url="$url$($DLG_TEXT ''|jq -rR '.|@uri')" ;; # escaped id
 		/track/*) echo $url | play; break ;;
 	esac
-	[ "$verbose" -eq 1 ] && echo "$0 $url" >&2
+	[ "$DZR_VERBOSE" -eq 1 ] && echo "$0 $url" >&2
 	while path=$($FUNC $url); do # browse REPL
 		case "$path" in
 		▸) echo "$API$url"; $FETCH "$API$url" | jq "$FMT_TRKS" | play cat; break ;;
