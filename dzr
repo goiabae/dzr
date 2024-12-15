@@ -43,14 +43,28 @@ DLG_LIST="dialog --keep-tite --output-fd 1 --menu $1: 0 0 0"
 DLG_TEXT="dialog --keep-tite --output-fd 1 --inputbox $1: 0 0"
 FMT_FUNC='s@[,?].*@@;s@[^a-zA-Z0-9]\{1,\}@_@g;s@[0-9,]\{1,\}@0@g;s@_\{1,\}$@@'
 
-dzr()          { $DLG_LIST /search/track?q= 'by name' /search/artist?q= 'by name' /search/album?q= 'by name' /search/playlist?q= 'by name' /search/user?q= 'by name' /search/radio?q= 'by name' /genre 'list' /radio 'list' /user/0 'by id' ;}
+dzr() {
+	[ "$DZR_VERBOSE" -eq 1 ] && echo "dzr($*)" >&2
+	$DLG_LIST /search/track?q= 'by name' /search/artist?q= 'by name' /search/album?q= 'by name' /search/playlist?q= 'by name' /search/user?q= 'by name' /search/radio?q= 'by name' /genre 'list' /radio 'list' /user/0 'by id'
+}
+
 dzr_genre_0()  { $DLG_LIST radios '' artists '' ;}
 dzr_radio_0()  { $DLG_LIST tracks '' fans '' ;}
-dzr_album_0()  { $DLG_LIST tracks '' fans '' ;}
+
+dzr_album_0() {
+	[ "$DZR_VERBOSE" -eq 1 ] && echo "dzr_album_0($*)" >&2
+	$DLG_LIST tracks '' fans ''
+}
+
 dzr_user_0()   { $DLG_LIST charts '' albums '' playlists '' flow '' tracks '' artists '' ;}
-dzr_artist_0() { $DLG_LIST top?limit=50 '' albums '' fans '' related '' radio '' playlists '' ;}
+
+dzr_artist_0() {
+	[ "$DZR_VERBOSE" -eq 1 ] && echo "dzr_artist_0($*)" >&2
+	$DLG_LIST top?limit=50 '' albums '' fans '' related '' radio '' playlists ''
+}
 
 dzr_default() {
+	[ "$DZR_VERBOSE" -eq 1 ] && echo "dzr_default($*)" >&2
 	# shellcheck disable=SC2086
 	$FETCH -H "Accept-Language: $LANG" "$API$1" |\
 		jq -f format_list.jq |\
@@ -58,6 +72,7 @@ dzr_default() {
 } # TODO: .next
 
 play() { # receive /track/1,2,3 from stdin
+	[ "$DZR_VERBOSE" -eq 1 ] && echo "play($*)" >&2
 	xargs basename | xargs dzr-url | ${1:-cat} | while read -r url id; do
 		$FETCH "$url" | dzr-dec "${id}" | eval "${PLAYER:-'mpv -'}" || break # stop if Ctrl+C : $? = 4
 	done
